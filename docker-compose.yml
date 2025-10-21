@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: hotelease-postgres
+    environment:
+      POSTGRES_DB: hotelease
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hotelease-network
+
+  backend:
+    build: 
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: hotelease-backend
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/hotelease?schema=public
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      PORT: 3001
+      NODE_ENV: production
+    depends_on:
+      - postgres
+    networks:
+      - hotelease-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: hotelease-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - hotelease-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  hotelease-network:
+    driver: bridge

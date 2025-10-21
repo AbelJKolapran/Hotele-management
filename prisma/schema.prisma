@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STAFF
+  RECEPTIONIST
+  MANAGER
+}
+
+enum RoomType {
+  STANDARD
+  DELUXE
+  SUITE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+}
+
+enum BookingStatus {
+  ACTIVE
+  CHECKED_IN
+  CHECKED_OUT
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  REFUNDED
+}
+
+enum ServiceRequestType {
+  WATER
+  TOWEL
+  PILLOW
+  BLANKET
+  CLEANING
+  MAINTENANCE
+  ROOM_SERVICE
+  OTHER
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  COMPLETED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdBookings Booking[]
+
+  @@map("users")
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  roomNumber  String     @unique
+  roomType    RoomType
+  status      RoomStatus @default(AVAILABLE)
+  price       Decimal    @db.Decimal(10, 2)
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  bookings Booking[]
+
+  @@map("rooms")
+}
+
+model Booking {
+  id            String         @id @default(cuid())
+  bookingId     String         @unique // Unique identifier for user login
+  guestName     String
+  guestEmail    String?
+  phoneNumber   String
+  roomId        String
+  checkIn       DateTime
+  checkOut      DateTime
+  status        BookingStatus  @default(ACTIVE)
+  paymentStatus PaymentStatus  @default(PENDING)
+  totalAmount   Decimal        @db.Decimal(10, 2)
+  specialRequests String?
+  checkedInAt   DateTime?
+  checkedOutAt  DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  createdById   String         // Admin who created the booking
+
+  // Relations
+  room                Room                 @relation(fields: [roomId], references: [id])
+  createdBy           User                 @relation(fields: [createdById], references: [id])
+  serviceRequests     RoomServiceRequest[]
+  stayRating          StayRating?
+
+  @@map("bookings")
+}
+
+model RoomServiceRequest {
+  id            String                @id @default(cuid())
+  bookingId     String
+  requestType   ServiceRequestType
+  description   String?
+  status        ServiceRequestStatus  @default(PENDING)
+  notes         String?
+  requestedAt   DateTime              @default(now())
+  completedAt   DateTime?
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("room_service_requests")
+}
+
+model StayRating {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  rating    Int      // 1-5 scale
+  feedback  String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("stay_ratings")
+}
